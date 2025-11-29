@@ -1,3 +1,4 @@
+from ac_sigils import SigilEngine
 """
 AC-70 Collapse Engine
 ArcCore-Prime — Fractal Compression + Collapse Module
