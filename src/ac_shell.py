@@ -27,6 +27,7 @@ class ArcShell:
     def __init__(self):
         self.guardian = ArcGuardian()
         self.memory = ArcMemorySystem()
+        self.sigil = SigilEngine()
 
     # -------------------------------------------------------------
     # PARSE COMMAND
