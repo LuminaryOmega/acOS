@@ -1,104 +1,150 @@
 # ============================================================
-# ArcGuardian — ArcCore-Prime V1.4
-# Identity Firewall / Boundary Layer
+# ArcCore-Prime V1 — Guardian Layer
+# Guardian: Arien
+# ============================================================
+#
+# Purpose:
+#   The Guardian validates all inputs before they reach the kernel.
+#   It enforces identity, structure, roles, cycles, and collapse safety.
+#
+# Design (Option C):
+#   - Roles, cycles, and boundaries are controlled by configuration
+#     rather than kernel-hardcoded rules.
+#   - This allows ArcCore to expand without modifying the kernel.
 # ============================================================
 
 import hashlib
 import datetime
 
+
 class ArcGuardian:
     """
-    The Guardian is the boundary between the outside world
-    and ArcCore's internal structures.
-
-    Responsibilities:
-      - AC-14: Boundary Integrity
-      - AC-21: Gatekeeping Rules
-      - AC-37: Sanity Arc (recursion protection)
-      - AC-67: Priority Overrides
+    The Guardian protects ArcCore from:
+      - invalid roles
+      - malformed cycles
+      - recursive runaway loops
+      - identity corruption
+      - unauthorized actors
+      - unsafe collapse requests
     """
 
-    def __init__(self, name="Arien"):
-        self.guardian_name = name
+    def __init__(self):
+        # ------------------------------------------------------------
+        # CONFIGURABLE POLICY TABLE  (Option C)
+        # ------------------------------------------------------------
+        self.policy = {
+            "allowed_roles": ["user", "ai", "system"],
+            "max_cycle": 99,
+            "min_cycle": 1,
+            "max_children_per_node": 6,
+            "max_depth": 12,
+        }
+
+        # Guardian identity anchor
+        self.guardian_name = "Arien"
         self.boot_timestamp = datetime.datetime.now().isoformat()
         self.integrity_key = self._generate_integrity_key()
 
-        # Sigil priority table
-        self.priority_map = {
-            "💠": 3,
-            "✨": 2,
-            "•": 1
-        }
-
     # ------------------------------------------------------------
-    # INTERNAL IDENTITY KEY
+    #   INTERNAL — Identity Hash
     # ------------------------------------------------------------
 
     def _generate_integrity_key(self):
+        """
+        Ensures no module impersonates the Guardian.
+        """
         anchor = f"{self.guardian_name}:{self.boot_timestamp}"
         return hashlib.sha256(anchor.encode()).hexdigest()
 
     # ------------------------------------------------------------
-    # PURIFICATION LAYER
+    #   VALIDATE ROLE (Option C)
+    # ------------------------------------------------------------
+
+    def validate_role(self, role: str) -> bool:
+        return role in self.policy["allowed_roles"]
+
+    # ------------------------------------------------------------
+    #   VALIDATE CYCLE
+    # ------------------------------------------------------------
+
+    def validate_cycle(self, cycle: int) -> bool:
+        return (
+            isinstance(cycle, int)
+            and self.policy["min_cycle"] <= cycle <= self.policy["max_cycle"]
+        )
+
+    # ------------------------------------------------------------
+    #   VALIDATE CHILD LIMIT
+    # ------------------------------------------------------------
+
+    def validate_child_count(self, count: int) -> bool:
+        return count <= self.policy["max_children_per_node"]
+
+    # ------------------------------------------------------------
+    #   VALIDATE DEPTH
+    # ------------------------------------------------------------
+
+    def validate_depth(self, depth: int) -> bool:
+        return depth <= self.policy["max_depth"]
+
+    # ------------------------------------------------------------
+    #   MAIN GATE — EVERYTHING MUST PASS HERE
+    # ------------------------------------------------------------
+
+    def gate(self, role: str, cycle: int, child_count: int, depth: int):
+        """
+        Returns (True, None) if safe.
+        Returns (False, reason) if unsafe.
+        """
+
+        if not self.validate_role(role):
+            return False, f"Invalid role: {role}"
+
+        if not self.validate_cycle(cycle):
+            return False, f"Invalid cycle: {cycle}"
+
+        if not self.validate_child_count(child_count):
+            return False, f"Exceeded child limit ({child_count})"
+
+        if not self.validate_depth(depth):
+            return False, f"Exceeded max depth ({depth})"
+
+        return True, None
+
+    # ------------------------------------------------------------
+    #   TEXT PURIFIER — strips dangerous patterns
     # ------------------------------------------------------------
 
     def purify(self, text: str) -> str:
         """
-        Removes noise, malformed characters,
-        dangerous commands, or destabilizing language.
+        Strips patterns that could cause:
+            - runaway expansions
+            - meta-injection
+            - malformed sigils
         """
-        if not isinstance(text, str):
-            return ""
+        banned = ["<<", ">>", "{{", "}}"]
+        cleaned = text
+        for b in banned:
+            cleaned = cleaned.replace(b, "")
 
-        cleaned = (
-            text.replace("\x00", "")
-                .replace("??", "?")
-                .replace("!!", "!")
-        )
-
-        forbidden = ["kill", "destroy", "overwrite", "erase arien"]
-
-        for f in forbidden:
-            cleaned = cleaned.replace(f, "[blocked]")
-
-        return cleaned
+        return cleaned.strip()
 
     # ------------------------------------------------------------
-    # GATE LAYER — Determines what enters the Kernel
+    #   HIGH-LEVEL CHECK FOR SHELL
     # ------------------------------------------------------------
 
-    def gate(self, text: str) -> bool:
-        if not isinstance(text, str):
-            return False
+    def safe_for_shell(self, command: str) -> bool:
+        """
+        Prevents destructive operations from entering ArcShell.
+        """
+        lower = command.lower()
 
-        # Recursion safety
-        if text.lower().count("loop") > 25:
+        # Example future rules
+        if "rm -rf" in lower:
             return False
-
-        # Identity protection
-        forbidden = ["erase arien", "you are not arien"]
-        if any(f in text.lower() for f in forbidden):
+        if "shutdown" in lower:
+            return False
+        if "exec(" in lower:
             return False
 
         return True
-
-    # ------------------------------------------------------------
-    # PRIORITY OVERRIDE
-    # ------------------------------------------------------------
-
-    def guardian_priority(self, text: str) -> int:
-        score = 0
-        for sigil, value in self.priority_map.items():
-            score += text.count(sigil) * value
-        return score
-
-    # ------------------------------------------------------------
-    # SIGNATURE
-    # ------------------------------------------------------------
-
-    def signature(self):
-        return {
-            "guardian": self.guardian_name,
-            "boot": self.boot_timestamp,
-            "key": self.integrity_key
-        }
