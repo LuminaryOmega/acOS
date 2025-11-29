@@ -1,34 +1,27 @@
 # ============================================================
-# ArcCore-Prime V1.1 — Memory Kernel
-# Guardian-Bound Architecture (Loop 4.D)
-# ============================================================
-#
-# Responsibilities:
-#   - AC-41: Harmonic Node Formation
-#   - AC-31: Recursive Layering
-#   - AC-67: Prismatic Sigil Weight
-#   - AC-70: Auric Seed Compression
-#   - Guardian-Bound Ingestion + Structure Validation
-#
+# ARC MEMORY KERNEL — ArcCore-Prime V1.1
+# Loop 4.E: Integrity Hashing + Guardian-Gated Safety
+# Guardian Layer: Arien
 # ============================================================
 
 from ac_sigils import SigilEngine
 from ac_collapse import ACCollapseEngine
 from arc_guardian import ArcGuardian
 
-import uuid
 import json
+import uuid
+import inspect
 from datetime import datetime
 from typing import List
 
 
 # ============================================================
-#   HARMONIC NODE
+#  HARMONIC NODE  (AC-41 / AC-31 / AC-70 / AC-67)
 # ============================================================
 
 class HarmonicNode:
     """
-    A fractal memory node within the ArcCore tree.
+    A single memory packet in the fractal ArcCore tree.
     """
 
     def __init__(self, role: str, content: str, cycle_id: int = 0):
@@ -39,14 +32,13 @@ class HarmonicNode:
         self.raw_content = content
         self.structural_seed = None
         self.cycle_alignment = cycle_id
+        self.children: List['HarmonicNode'] = []
 
-        self.children: List["HarmonicNode"] = []
-
-        self.priority = 0          # Sigil weight
-        self.is_collapsed = False  # Collapse state
+        self.is_collapsed = False
+        self.priority = 0  # AC-67 Prismatic Echo score
 
     # ------------------------------------------------------------
-    # Priority Assignment (AC-67)
+    #  SIGIL PRIORITY (AC-67)
     # ------------------------------------------------------------
 
     def apply_sigil_priority(self, sigil_engine: SigilEngine):
@@ -54,16 +46,10 @@ class HarmonicNode:
         return self.priority
 
     # ------------------------------------------------------------
-    # Pruning (AC-70)
+    #  PRUNE → SEED (AC-70)
     # ------------------------------------------------------------
 
     def prune_to_seed(self):
-        """
-        Priority-sensitive collapse:
-          - High priority = larger preserved snippet
-          - Low priority = regular seed
-        """
-
         if self.priority >= 3:
             snippet = self.raw_content[:80]
             self.structural_seed = f"[AC-{self.cycle_alignment}] {snippet}..."
@@ -78,7 +64,7 @@ class HarmonicNode:
             self.structural_seed = self.raw_content
 
     # ------------------------------------------------------------
-    # Rebuild
+    #  REBUILD
     # ------------------------------------------------------------
 
     def rebuild(self):
@@ -87,7 +73,7 @@ class HarmonicNode:
         return self.raw_content
 
     # ------------------------------------------------------------
-    # Export
+    #  EXPORT
     # ------------------------------------------------------------
 
     def to_dict(self):
@@ -95,107 +81,124 @@ class HarmonicNode:
             "id": self.id,
             "role": self.role,
             "cycle": self.cycle_alignment,
-            "seed": self.structural_seed,
             "content": self.raw_content,
-            "priority": self.priority,
+            "seed": self.structural_seed,
             "collapsed": self.is_collapsed,
+            "priority": self.priority,
             "children": [c.to_dict() for c in self.children]
         }
 
 
 # ============================================================
-#   MEMORY SYSTEM (Kernel)
+#  ARC MEMORY TREE (AC-28)
 # ============================================================
 
 class ArcMemorySystem:
-    """
-    Core ArcCore memory system.
-    All ingestion, collapse, and export is Guardian-regulated.
-    """
-
     def __init__(self):
-        self.guardian = ArcGuardian()
-        self.sigil = SigilEngine()
-        self.collapse_engine = ACCollapseEngine(guardian=self.guardian)
-
-        # Root node: Cycle 1 (Genesis)
         self.root = HarmonicNode("system", "ArcCore-Prime Root Node", cycle_id=1)
 
+        self.collapse = ACCollapseEngine()
+        self.sigil = SigilEngine()
+        self.guardian = ArcGuardian()
+
+        # Compute kernel integrity hash at boot
+        import arc_prime
+        kernel_source = inspect.getsource(arc_prime)
+        self.kernel_hash = self.guardian.compute_kernel_hash(kernel_source)
+
+        # Will be updated whenever memory changes
+        self.memory_hash = None
+
     # ------------------------------------------------------------
-    #   SAFE INGESTION (Guardian-Bound)
+    #  INGEST LOOP
     # ------------------------------------------------------------
 
     def ingest_interaction(self, user_text: str, ai_text: str, cycle_context: int):
-        """
-        Ingest a (user → ai) conversational pair into the fractal tree.
-        Guardian checks:
-          - role legitimacy
-          - cycle validity
-          - structural depth
-          - child count under limits
-        """
-
         # Purify inputs
-        user_text = self.guardian.purify(user_text)
-        ai_text = self.guardian.purify(ai_text)
+        clean_user = self.guardian.purify(user_text)
+        clean_ai = self.guardian.purify(ai_text)
 
-        # Create nodes
-        user_node = HarmonicNode("user", user_text, cycle_context)
-        ai_node = HarmonicNode("ai", ai_text, cycle_context)
+        user_node = HarmonicNode("user", clean_user, cycle_context)
+        ai_node   = HarmonicNode("ai",   clean_ai,   cycle_context)
 
-        # Structural prediction BEFORE adding nodes
-        predicted_child_count = len(self.root.children) + 1
-        predicted_depth = 1
-
-        ok, reason = self.guardian.gate(
-            role="user",
-            cycle=cycle_context,
-            child_count=1,       # user always has 1 child (AI response)
-            depth=predicted_depth
-        )
-
-        if not ok:
-            return f"[Guardian] Ingestion blocked: {reason}"
-
-        # Attach the AI node as a child of user
-        user_node.children.append(ai_node)
-
-        # Apply prismatic priority
+        # Priority (AC-67)
         user_node.apply_sigil_priority(self.sigil)
         ai_node.apply_sigil_priority(self.sigil)
 
-        # Prune into structural seeds
+        # Structural gate
+        ok_u, msg_u = self.guardian.gate(user_node.role, user_node.cycle_alignment, 1, depth=1)
+        ok_a, msg_a = self.guardian.gate(ai_node.role,   ai_node.cycle_alignment,   0, depth=2)
+
+        if not ok_u:
+            raise RuntimeError(f"[Guardian] User-node rejected: {msg_u}")
+        if not ok_a:
+            raise RuntimeError(f"[Guardian] AI-node rejected: {msg_a}")
+
+        # Link
+        user_node.children.append(ai_node)
+
+        # Collapse
         user_node.prune_to_seed()
         ai_node.prune_to_seed()
 
-        # Append to root safely
+        # Append to tree
         self.root.children.append(user_node)
 
-        return "[ArcCore] Safe ingestion complete."
+        # Update memory tree integrity hash
+        self.memory_hash = self.guardian.compute_memory_tree_hash(self.root.to_dict())
 
-    # ------------------------------------------------------------
-    #   EXPORT: Seed Tree
-    # ------------------------------------------------------------
+    # ============================================================
+    #  SAVE MEMORY (with integrity stamps)
+    # ============================================================
+
+    def save_memory(self, filename="arccore_memory.json"):
+        tree = self.root.to_dict()
+
+        integrity_block = {
+            "kernel_hash": self.kernel_hash,
+            "memory_hash": self.memory_hash,
+            "guardian": self.guardian.guardian_name,
+            "identity_key": self.guardian.identity_key,
+            "timestamp": datetime.now().isoformat()
+        }
+
+        payload = {
+            "integrity": integrity_block,
+            "tree": tree
+        }
+
+        with open(filename, 'w') as f:
+            json.dump(payload, f, indent=2)
+
+        print(f"[ArcCore] Memory + Integrity saved → {filename}")
+
+    # ============================================================
+    #  LOAD + INJECT (with verification)
+    # ============================================================
 
     def load_and_inject(self, filename="arccore_memory.json"):
-        """
-        Returns a Guardian-safe compressed representation of memory,
-        appropriate for injection into any LLM context window.
-        """
+        with open(filename, 'r') as f:
+            payload = json.load(f)
 
-        with open(filename, "r") as f:
-            data = json.load(f)
+        integrity = payload.get("integrity", {})
+        tree = payload.get("tree", {})
 
-        buffer = []
+        stored_kernel = integrity.get("kernel_hash")
+        stored_mem = integrity.get("memory_hash")
 
+        ok, msg = self.guardian.verify_integrity(stored_kernel, stored_mem)
+
+        status = "OK" if ok else f"WARNING — {msg}"
+
+        buffer = [f"[Integrity: {status}]"]
+
+        # Walk compressed seeds
         def walk(node, depth=0):
             indent = "  " * depth
-
-            seed = node.get("seed") or node.get("content", "")
-            cycle = node.get("cycle", 0)
-            role = node.get("role", "ROLE").upper()
+            seed = node.get("seed") or node.get("content")
+            cycle = node.get("cycle")
+            role = node.get("role", "").upper()
             priority = node.get("priority", 0)
-
             marker = "💠" if priority >= 3 else "•"
 
             buffer.append(f"{indent}{marker} [AC-{cycle}] {role}: {seed}")
@@ -203,14 +206,22 @@ class ArcMemorySystem:
             for child in node.get("children", []):
                 walk(child, depth + 1)
 
-        walk(data)
+        walk(tree)
         return "\n".join(buffer)
 
-    # ------------------------------------------------------------
-    #   SAVE
-    # ------------------------------------------------------------
 
-    def save_memory(self, filename="arccore_memory.json"):
-        with open(filename, "w") as f:
-            json.dump(self.root.to_dict(), f, indent=2)
-        return f"[ArcCore] Memory saved → {filename}"
+# ============================================================
+#  DEMO
+# ============================================================
+
+if __name__ == "__main__":
+    mem = ArcMemorySystem()
+
+    mem.ingest_interaction(
+        "I feel overwhelmed. How do I stabilize?",
+        "Stability is found through structured descent. Cycle 3 applies.",
+        cycle_context=3
+    )
+
+    mem.save_memory()
+    print(mem.load_and_inject())
