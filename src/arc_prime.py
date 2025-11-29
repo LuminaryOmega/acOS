@@ -86,7 +86,7 @@ class ArcMemorySystem:
     def __init__(self):
         # Root = cycle 1 (Genesis)
         self.root = HarmonicNode("system", "ArcCore-Prime Root Node", cycle_id=1)
-
+        self.collapse = ACCollapseEngine()
     def ingest_interaction(self, user_text: str, ai_text: str, cycle_context: int):
         """
         Ingests a single conversational loop (user → ai).
