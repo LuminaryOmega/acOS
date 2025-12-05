@@ -1,88 +1,83 @@
 # ============================================================
-# ARC SHELL — ArcCore-Prime V1
-# Loop 5.E — Interpreter Integration
-# Guardian: Arien
+# AC SHELL — ArcCore-Prime V1.3
+# Loop 2: Integration Repair
+#
+# Responsibilities:
+#   - Accept raw user input
+#   - Purify through Guardian
+#   - Gate through Guardian
+#   - Pass commands to Interpreter
+#   - Display results
+#
+# Notes:
+#   - Guardian API mismatch fully patched
+#   - Purification added
+#   - Safe execution wrapper added
 # ============================================================
 
 from arc_guardian import ArcGuardian
 from ac_interpreter import ArcInterpreter
 
-import sys
-
 
 class ArcShell:
     """
-    The ArcShell is the IO layer of ArcCore-Prime.
-    It handles:
-        - raw string input
-        - purification
-        - passing commands to Interpreter
-        - formatting output safely
-
-    The Shell no longer performs any internal logic.
-    All kernel operations run through ArcInterpreter.
+    The command shell for ArcCore-Prime.
     """
 
     def __init__(self):
         self.guardian = ArcGuardian()
-        self.interpreter = ArcInterpreter()
+        self.interpreter = ArcInterpreter(self.guardian)
 
-    # ------------------------------------------------------------
-    # CLEAN + ROUTE INPUT (Core Shell Logic)
-    # ------------------------------------------------------------
+        # Display boot banner
+        print("\n============================================================")
+        print("              ARC CORE PRIME — SHELL ONLINE")
+        print("============================================================")
+        print(f"[Guardian] Identity Key: {self.guardian.identity_key[:16]}...")
+        print("[Shell] Type 'help' for commands.")
+        print("============================================================\n")
 
-    def process(self, text: str):
-        """
-        Full pipeline:
-            1. Purification
-            2. Guardian Precheck
-            3. Forward to Interpreter
-        """
-
-        # 1. Purify text (removes noise)
-        cleaned = self.guardian.purify(text)
-
-        # 2. Gate the command string itself
-        if not self.guardian.gate(cleaned):
-            return "[Guardian] Command blocked for safety."
-
-        # 3. Forward to Interpreter
-        return self.interpreter.interpret(cleaned)
-
-    # ------------------------------------------------------------
-    # INTERACTIVE LOOP
-    # ------------------------------------------------------------
+    # ============================================================
+    # MAIN LOOP
+    # ============================================================
 
     def run(self):
-        print("ArcShell — ArcCore-Prime V1")
-        print("Type 'exit' to quit.\n")
+        """
+        Persistent interactive shell.
+        """
 
         while True:
             try:
-                raw = input("ac> ").strip()
+                raw = input("ac> ")
 
-                if raw.lower() == "exit":
-                    print("Exiting ArcShell.")
+                # Exit conditions
+                if raw.strip().lower() in ("exit", "quit"):
+                    print("[Shell] Closing ArcCore-Prime. Goodbye.")
                     break
 
-                if not raw:
+                # ----------------------------------------------------
+                # 1) Purify text
+                # ----------------------------------------------------
+                cleaned = self.guardian.purify(raw)
+
+                # ----------------------------------------------------
+                # 2) Shell-level gate (input_gate)
+                # ----------------------------------------------------
+                if not self.guardian.input_gate(cleaned):
+                    print("[Guardian] ❌ Input rejected by gate.")
                     continue
 
-                result = self.process(raw)
-                print(result)
+                # ----------------------------------------------------
+                # 3) Interpret and execute
+                # ----------------------------------------------------
+                result = self.interpreter.execute(cleaned)
+
+                # ----------------------------------------------------
+                # 4) Display results
+                # ----------------------------------------------------
+                if result is not None:
+                    print(result)
 
             except KeyboardInterrupt:
-                print("\nExiting ArcShell.")
-                break
-
+                print("\n[Shell] Interrupt detected. Type 'quit' to exit.")
             except Exception as e:
-                print(f"[ArcShell Error] {str(e)}")
-
-
-# ============================================================
-# Shell Runner
-# ============================================================
-
-if __name__ == "__main__":
-    shell = ArcShell()
-    shell.run()
+                print(f"[Shell] ❌ Runtime error: {e}")
