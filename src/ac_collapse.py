@@ -1,7 +1,13 @@
 # ============================================================
-# ACCollapseEngine — ArcCore-Prime V1.1
+# ACCollapseEngine — ArcCore-Prime V1.5 (Unified)
 # Guardian-Bound Structural Collapse Layer
 # ============================================================
+#
+# History:
+#   - Loop 1.1: Basic Recursive Collapse
+#   - Loop 1.4: String Interning (Optimization)
+#   - Loop 2.2: Compression Level Enums (State Safety)
+#   - V1.5:     Unified Architecture
 #
 # Purpose:
 #   Converts full memory nodes into compact structural seeds
@@ -11,22 +17,15 @@
 # ============================================================
 
 import copy
+import sys
 from enum import IntEnum
 
 
 # ============================================================
 # LOOP 2.2 — COMPRESSION CONTRACT (NORMATIVE)
 # ============================================================
-#
-# Compression levels define how much information is retained
-# over time. Levels are ordered by decreasing fidelity.
-#
+# Compression levels define how much information is retained.
 # Downgrades MUST be explicit.
-# No node may be downgraded past SIGIL_ONLY silently.
-#
-# Reconstruction behavior MUST respect the compression level.
-# Persistence guarantees are defined in docs/memory_model.md
-#
 # ============================================================
 
 class CompressionLevel(IntEnum):
@@ -44,11 +43,7 @@ class ACCollapseEngine:
       - AC-70: Auric Seed Compression
       - AC-31: Recursive Controlled Collapse
       - AC-67: Priority-Preserving Seed Retention
-
-    NOTE:
-    This engine performs structural collapse only.
-    Compression level transitions are explicit but
-    downgrade policy is enforced elsewhere.
+      - Loop 1.4: System-level String Interning
     """
 
     def __init__(self, guardian=None):
@@ -68,7 +63,8 @@ class ACCollapseEngine:
         if self.guardian is None:
             return True, None
 
-        role = node.get("role", "unknown")
+        # Loop 1.4 Optimization: Intern high-frequency strings
+        role = sys.intern(node.get("role", "unknown"))
         cycle = node.get("cycle", 0)
         children = node.get("children", [])
 
@@ -89,50 +85,52 @@ class ACCollapseEngine:
         """
         Recursively collapses a node into a seed-safe structure.
         All Guardian policies are enforced at each step.
-
-        This method does NOT silently downgrade compression levels.
-        Any downgrade must be explicitly recorded.
         """
 
-        # 1. Structural clone
+        # 1. Structural clone (Preserve original memory safe)
         collapsed = copy.deepcopy(node)
 
         # Ensure compression metadata exists
         collapsed.setdefault("compression_level", CompressionLevel.RAW)
         collapsed.setdefault("compressed_from", None)
 
-        # 2. Guardian validation
+        # 2. Guardian validation (Optimized)
         ok, reason = self._validate_node(collapsed, depth)
         if not ok:
+            # Intern error states for memory efficiency on failures
             return {
-                "role": collapsed.get("role", "unknown"),
+                "role": sys.intern(collapsed.get("role", "unknown")),
                 "cycle": collapsed.get("cycle", 0),
-                "error": f"[Guardian] Collapse blocked: {reason}",
-                "seed": "[Blocked]",
+                "error": sys.intern(f"[Guardian] Collapse blocked: {reason}"),
+                "seed": sys.intern("[Blocked]"),
                 "compression_level": CompressionLevel.SIGIL_ONLY,
                 "compressed_from": collapsed.get("compression_level"),
                 "children": []
             }
 
-        # 3. Priority-sensitive collapse
+        # 3. Priority-sensitive collapse (The "Prismatic" Step)
         seed = collapsed.get("seed")
         raw = collapsed.get("content", "")
         priority = collapsed.get("priority", 0)
 
-        # If seed already exists, discard raw content safely
+        # Strategy: If seed exists, safely discard raw content
         if seed:
             collapsed["content"] = None
+            # Explicit State Transition
             if collapsed["compression_level"] == CompressionLevel.RAW:
                 collapsed["compressed_from"] = CompressionLevel.RAW
                 collapsed["compression_level"] = CompressionLevel.SEED
 
         else:
-            # Generate seed if missing
+            # Strategy: Generate seed if missing
             if priority >= 3:
+                # High priority: Keep longer snippet
                 snippet = raw[:80]
             else:
+                # Low priority: Aggressive truncate
                 snippet = raw[:50]
 
+            # Loop 1.4: Intern the prefix logic if possible, though variable content cannot be interned.
             collapsed["seed"] = f"[AutoSeed AC-{collapsed.get('cycle', 0)}]: {snippet}..."
             collapsed["content"] = None
             collapsed["compressed_from"] = collapsed.get("compression_level")
