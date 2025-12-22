@@ -2,6 +2,8 @@
 # ARC MEMORY KERNEL — ArcCore-Prime V1.1
 # Loop 1.4: String Interning (Prime-side)
 # Guardian Layer: Arien
+# Persistence guarantees are defined in docs/memory_model.md
+# Implementations here must not violate those guarantees.
 # ============================================================
 
 from ac_sigils import SigilEngine
