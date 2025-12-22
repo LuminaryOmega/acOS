@@ -11,15 +11,44 @@
 # ============================================================
 
 import copy
+from enum import IntEnum
+
+
+# ============================================================
+# LOOP 2.2 — COMPRESSION CONTRACT (NORMATIVE)
+# ============================================================
+#
+# Compression levels define how much information is retained
+# over time. Levels are ordered by decreasing fidelity.
+#
+# Downgrades MUST be explicit.
+# No node may be downgraded past SIGIL_ONLY silently.
+#
+# Reconstruction behavior MUST respect the compression level.
+# Persistence guarantees are defined in docs/memory_model.md
+#
+# ============================================================
+
+class CompressionLevel(IntEnum):
+    RAW = 0          # Full content retained (short-lived)
+    SUMMARY = 1      # Structured summary retained
+    SEED = 2         # Auric seed + metadata only
+    SIGIL_ONLY = 3   # Anchor only; reconstruction required
 
 
 class ACCollapseEngine:
     """
     Safe collapse engine bound to Guardian policy rules.
+
     Performs:
       - AC-70: Auric Seed Compression
       - AC-31: Recursive Controlled Collapse
       - AC-67: Priority-Preserving Seed Retention
+
+    NOTE:
+    This engine performs structural collapse only.
+    Compression level transitions are explicit but
+    downgrade policy is enforced elsewhere.
     """
 
     def __init__(self, guardian=None):
@@ -60,10 +89,17 @@ class ACCollapseEngine:
         """
         Recursively collapses a node into a seed-safe structure.
         All Guardian policies are enforced at each step.
+
+        This method does NOT silently downgrade compression levels.
+        Any downgrade must be explicitly recorded.
         """
 
         # 1. Structural clone
         collapsed = copy.deepcopy(node)
+
+        # Ensure compression metadata exists
+        collapsed.setdefault("compression_level", CompressionLevel.RAW)
+        collapsed.setdefault("compressed_from", None)
 
         # 2. Guardian validation
         ok, reason = self._validate_node(collapsed, depth)
@@ -73,6 +109,8 @@ class ACCollapseEngine:
                 "cycle": collapsed.get("cycle", 0),
                 "error": f"[Guardian] Collapse blocked: {reason}",
                 "seed": "[Blocked]",
+                "compression_level": CompressionLevel.SIGIL_ONLY,
+                "compressed_from": collapsed.get("compression_level"),
                 "children": []
             }
 
@@ -84,6 +122,9 @@ class ACCollapseEngine:
         # If seed already exists, discard raw content safely
         if seed:
             collapsed["content"] = None
+            if collapsed["compression_level"] == CompressionLevel.RAW:
+                collapsed["compressed_from"] = CompressionLevel.RAW
+                collapsed["compression_level"] = CompressionLevel.SEED
 
         else:
             # Generate seed if missing
@@ -94,6 +135,8 @@ class ACCollapseEngine:
 
             collapsed["seed"] = f"[AutoSeed AC-{collapsed.get('cycle', 0)}]: {snippet}..."
             collapsed["content"] = None
+            collapsed["compressed_from"] = collapsed.get("compression_level")
+            collapsed["compression_level"] = CompressionLevel.SEED
 
         # 4. Recursively collapse children
         child_list = collapsed.get("children", [])
