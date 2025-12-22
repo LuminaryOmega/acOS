@@ -1,6 +1,6 @@
 # ============================================================
 # ARC MEMORY KERNEL — ArcCore-Prime V1.1
-# Loop 4.E: Integrity Hashing + Guardian-Gated Safety
+# Loop 1.4: String Interning (Prime-side)
 # Guardian Layer: Arien
 # ============================================================
 
@@ -11,6 +11,7 @@ from arc_guardian import ArcGuardian
 import json
 import uuid
 import inspect
+import sys
 from datetime import datetime
 from typing import List
 
@@ -28,7 +29,8 @@ class HarmonicNode:
         self.id = str(uuid.uuid4())[:8]
         self.timestamp = datetime.now().isoformat()
 
-        self.role = role
+        # Loop 1.4 — intern high-frequency structural strings
+        self.role = sys.intern(role)
         self.raw_content = content
         self.structural_seed = None
         self.cycle_alignment = cycle_id
@@ -101,12 +103,12 @@ class ArcMemorySystem:
         self.sigil = SigilEngine()
         self.guardian = ArcGuardian()
 
-        # Compute kernel integrity hash at boot
+        # Kernel integrity (unchanged — owned by Guardian loops)
         import arc_prime
         kernel_source = inspect.getsource(arc_prime)
         self.kernel_hash = self.guardian.compute_kernel_hash(kernel_source)
 
-        # Will be updated whenever memory changes
+        # Updated whenever memory changes
         self.memory_hash = None
 
     # ------------------------------------------------------------
@@ -184,38 +186,34 @@ class ArcMemorySystem:
 
         buffer = [f"[Integrity: {status}]"]
 
-        max_depth = 50  # Hard recursion ceiling
-        visited = set()  # Traversal-local cycle detection
+        max_depth = 50
+        visited = set()
+
+        MARKER_HIGH = sys.intern("💠")
+        MARKER_LOW  = sys.intern("•")
 
         def walk(node, depth=0):
             indent = "  " * depth
-
-            # Prefer stable node IDs when present; fallback identity is traversal-local only
             node_id = node.get("id")
             node_key = node_id if node_id is not None else id(node)
 
-            # Cycle guard: prevents infinite recursion on malformed or cyclical graphs
             if node_key in visited:
                 warning = f"Cycle detected at node {node_key}; skipping children"
                 buffer.append(f"{indent}[{warning}]")
-                print(f"[ArcCore Warning] {warning}")
                 return
 
             visited.add(node_key)
 
             seed = node.get("seed") or node.get("content")
             cycle = node.get("cycle")
-            role = node.get("role", "").upper()
+            role = sys.intern(node.get("role", "").upper())
             priority = node.get("priority", 0)
-            marker = "💠" if priority >= 3 else "•"
 
+            marker = MARKER_HIGH if priority >= 3 else MARKER_LOW
             buffer.append(f"{indent}{marker} [AC-{cycle}] {role}: {seed}")
 
-            # Depth guard: stop descending after logging the ceiling node
             if depth >= max_depth:
-                warning = f"Traversal halted: depth limit {max_depth} reached at node {node_key}"
-                buffer.append(f"{indent}[{warning}]")
-                print(f"[ArcCore Warning] {warning}")
+                buffer.append(f"{indent}[Traversal halted: depth limit {max_depth} reached]")
                 return
 
             for child in node.get("children", []):
