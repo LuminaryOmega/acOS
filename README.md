@@ -2,6 +2,7 @@
 Unified Fractal Intelligence Kernel  
 Guardian Layer: Arien  
 Status: Private Development Build  
+For details on how acOS preserves and reconstructs memory over time, see docs/memory_model.md
 
 This repository contains:
 - fractal memory engine
